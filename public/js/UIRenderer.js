@@ -4,8 +4,23 @@ class UIRenderer {
         this.statusEl = statusEl;
         this.onPitClick = onPitClick;
         this.myPlayerId = null;
+	this.nicks = { 0: 'Gracz dolny', 1: 'Gracz górny' };
     }
-    setPlayerId(id) { this.myPlayerId = id; }
+
+    setPlayerId(id) {
+        this.myPlayerId = id;
+    }
+
+    setNicks(myNick, opponentNick, myId) {
+        if (myId === 0) {
+            this.nicks[0] = myNick;
+            this.nicks[1] = opponentNick;
+        } else {
+            this.nicks[0] = opponentNick;
+            this.nicks[1] = myNick;
+        }
+    }
+
     render(board, currentPlayer, gameOver, winner) {
         this.container.innerHTML = '';
 
@@ -28,13 +43,16 @@ class UIRenderer {
         this.container.appendChild(bottomRow);
 
         if (gameOver) {
-            const winnerText = winner !== null ? `Wygrał ${winner === 0 ? 'gracz dolny' : 'gracz górny'}` : 'Remis';
-            this.statusEl.innerText = `Koniec gry! ${winnerText} (${board[6]}:${board[13]})`;
+            const winnerName = winner !== null ? this.nicks[winner] : 'Remis';
+            this.statusEl.innerText = `Koniec gry! Wygrał ${winnerName} (${board[6]}:${board[13]})`;
         } else {
-            const turn = currentPlayer === 0 ? 'Gracz dolny' : 'Gracz górny';
-            let info = `Tura: ${turn}`;
-            if (this.myPlayerId !== null && currentPlayer !== this.myPlayerId) info += ' (czekaj)';
-            else if (this.myPlayerId !== null && currentPlayer === this.myPlayerId) info += ' (Twój ruch!)';
+            const currentNick = this.nicks[currentPlayer];
+            let info = `Tura: ${currentNick}`;
+            if (this.myPlayerId !== null && currentPlayer !== this.myPlayerId) {
+                info += ' (czekaj)';
+            } else if (this.myPlayerId !== null && currentPlayer === this.myPlayerId) {
+                info += ' (Twój ruch!)';
+            }
             this.statusEl.innerText = info;
         }
         this.updateDisabledState(gameOver, currentPlayer);

@@ -63,6 +63,7 @@ function handleMessage(data) {
             myPlayerId = data.playerId;
             currentGameId = data.gameId;
             uiRenderer.setPlayerId(myPlayerId);
+            uiRenderer.setNicks(data.myNick, data.opponentNick, myPlayerId);
             gameActive = true;
             uiRenderer.render(data.state.board, data.state.currentPlayer, data.state.gameOver, data.state.winner);
             let opponent = data.opponentNick || 'przeciwnik';
