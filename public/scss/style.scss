@@ -1,0 +1,96 @@
+$primary: #5d4037;
+$pit-bg: #d7ccc8;
+$store-bg: #a1887f;
+$highlight: #ffab40;
+
+* {
+    box-sizing: border-box;
+}
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #efebe9;
+    margin: 0;
+    padding: 20px;
+}
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    text-align: center;
+}
+.status {
+    background: $primary;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    margin: 10px 0;
+}
+.board {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    background: $primary;
+    padding: 20px;
+    border-radius: 30px;
+    margin: 20px 0;
+    .row {
+        display: contents;
+    }
+    .pit, .store {
+        background: $pit-bg;
+        border-radius: 50%;
+        aspect-ratio: 1 / 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        &:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+        &.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+            &:hover { transform: none; }
+        }
+    }
+    .store {
+        background: $store-bg;
+        border-radius: 20px;
+        aspect-ratio: 1 / 1.2;
+        cursor: default;
+        &:hover { transform: none; }
+    }
+    .store-left { grid-column: 1 / 2; }
+    .store-right { grid-column: 7 / 8; }
+}
+.scoreboard {
+    background: #fff;
+    padding: 10px;
+    border-radius: 20px;
+    ul {
+        list-style: none;
+        padding: 0;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    button {
+        background: $primary;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 20px;
+        cursor: pointer;
+    }
+}
+@keyframes pulse {
+    0% { transform: scale(1); background: $pit-bg; }
+    50% { transform: scale(1.1); background: $highlight; }
+    100% { transform: scale(1); background: $pit-bg; }
+}
+.highlight {
+    animation: pulse 1s infinite;
+}

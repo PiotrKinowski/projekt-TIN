@@ -1,0 +1,15 @@
+{
+  "name": "mancala-online",
+  "version": "1.0.0",
+  "description": "Mancala game with WebSocket and AJAX",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "watch:sass": "sass --watch public/scss:public/css"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "sass": "^1.69.5"
+  }
+}
