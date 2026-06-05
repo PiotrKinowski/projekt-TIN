@@ -1,20 +1,37 @@
 let wsManager, uiRenderer;
-let myPlayerId = null, gameActive = false, currentGameId = null, scoreSaved = false;
+let myPlayerId = null, gameActive = false, currentGameId = null, myNick = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    uiRenderer = new UIRenderer(
-        document.getElementById('board'),
-        document.getElementById('game-status'),
-        (pitIndex) => { if (gameActive) wsManager.move(pitIndex); }
-    );
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    wsManager = new WebSocketManager(
-        `${protocol}//${location.host}`,
-        () => { wsManager.join(); uiRenderer.showWaiting(); },
-        handleMessage,
-        () => uiRenderer.showError('Połączenie przerwane'),
-        () => console.error
-    );
+    const joinBtn = document.getElementById('join-btn');
+    const nickInput = document.getElementById('nick-input');
+    const gameArea = document.getElementById('game-area');
+    const statusDiv = document.getElementById('game-status');
+
+    joinBtn.addEventListener('click', () => {
+        const nick = nickInput.value.trim();
+        if (!nick) {
+            alert('Wprowadź nick!');
+            return;
+        }
+        myNick = nick;
+        document.getElementById('nick-section').style.display = 'none';
+        gameArea.style.display = 'block';
+
+        uiRenderer = new UIRenderer(
+            document.getElementById('board'),
+            statusDiv,
+            (pitIndex) => { if (gameActive) wsManager.move(pitIndex); }
+        );
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsManager = new WebSocketManager(
+            `${protocol}//${location.host}`,
+            () => { wsManager.join(myNick); uiRenderer.showWaiting(); },
+            handleMessage,
+            () => uiRenderer.showError('Połączenie przerwane'),
+            console.error
+        );
+    });
+
     document.getElementById('refresh-scores').addEventListener('click', refreshScores);
     refreshScores();
 });
@@ -25,24 +42,22 @@ function handleMessage(data) {
             myPlayerId = data.playerId;
             uiRenderer.setPlayerId(myPlayerId);
             gameActive = false;
+            uiRenderer.showWaiting();
             break;
         case 'game_start':
             myPlayerId = data.playerId;
             currentGameId = data.gameId;
-            scoreSaved = false;
             uiRenderer.setPlayerId(myPlayerId);
             gameActive = true;
             uiRenderer.render(data.state.board, data.state.currentPlayer, data.state.gameOver, data.state.winner);
+            let opponent = data.opponentNick || 'przeciwnik';
+            uiRenderer.statusEl.innerText = `Gra rozpoczęta! Ty: ${data.myNick}, przeciwnik: ${opponent}. ${data.state.currentPlayer === myPlayerId ? 'Twój ruch!' : 'Czekaj na ruch przeciwnika.'}`;
             break;
         case 'state_update':
             if (!currentGameId) currentGameId = data.gameId;
             uiRenderer.render(data.state.board, data.state.currentPlayer, data.state.gameOver, data.state.winner);
             gameActive = !data.state.gameOver;
-            if (data.state.gameOver && !scoreSaved) {
-                scoreSaved = true;
-                const winnerName = data.state.winner === 0 ? 'Gracz dolny' : (data.state.winner === 1 ? 'Gracz górny' : 'Remis');
-                ScoreAPI.saveScore(winnerName, data.state.board[6], data.state.board[13]).then(refreshScores);
-            }
+            // NIE zapisujemy wyniku z poziomu klienta – robi to serwer
             break;
         case 'error':
             uiRenderer.showError(data.message);
@@ -60,7 +75,9 @@ async function refreshScores() {
     list.innerHTML = '';
     scores.slice().reverse().forEach(s => {
         const li = document.createElement('li');
-        li.textContent = `${new Date(s.date).toLocaleString()} - ${s.winner} (${s.player0Score}:${s.player1Score})`;
+        // Wyświetlamy tylko datę (bez godziny) i nicki oraz wynik
+        const dateStr = new Date(s.date).toLocaleDateString();
+        li.textContent = `${dateStr} - Zwycięzca: ${s.winner} (${s.player0Nick}:${s.player1Nick} ${s.player0Score}:${s.player1Score})`;
         list.appendChild(li);
     });
 }

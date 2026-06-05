@@ -10,6 +10,10 @@ class WebSocketManager {
         if (this.ws.readyState === WebSocket.OPEN)
             this.ws.send(JSON.stringify({ type, ...payload }));
     }
-    join() { this.send('join', {}); }
-    move(pitIndex) { this.send('move', { pitIndex }); }
+    join(nick) {
+        this.send('join', { nick });
+    }
+    move(pitIndex) {
+        this.send('move', { pitIndex });
+    }
 }

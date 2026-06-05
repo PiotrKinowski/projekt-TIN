@@ -64,7 +64,7 @@ function finalizeGame(board) {
     return newBoard;
 }
 
-// ---------- KLASA SILNIKA GRY (programowanie obiektowe) ----------
+// ---------- KLASA SILNIKA GRY ----------
 class GameEngine {
     constructor() {
         this.board = [4,4,4,4,4,4,0,4,4,4,4,4,4,0];
@@ -117,11 +117,12 @@ const wss = new WebSocket.Server({ server });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Tablica wyników (dla uproszczenia w pamięci)
+// Tablica wyników (w pamięci)
 let scores = [];
 app.post('/api/scores', (req, res) => {
-    const { winner, player0Score, player1Score } = req.body;
-    scores.push({ winner, player0Score, player1Score, date: new Date() });
+    const { winner, player0Nick, player1Nick, player0Score, player1Score } = req.body;
+    scores.push({ winner, player0Nick, player1Nick, player0Score, player1Score, date: new Date() });
+    if (scores.length > 10) scores.shift();
     res.json({ success: true });
 });
 app.get('/api/scores', (req, res) => {
@@ -129,68 +130,76 @@ app.get('/api/scores', (req, res) => {
 });
 
 // Zarządzanie grami
-const games = new Map(); // gameId -> { engine, players: [ws], playerIds: [] }
-const sockets = new Map(); // socketId -> { gameId, playerIndex }
+const games = new Map(); // gameId -> { engine, players: [{ws, nick}], playerIds, saved }
 
 wss.on('connection', (ws) => {
     const socketId = Date.now() + '-' + Math.random();
     ws.socketId = socketId;
+    let currentNick = null;
 
     ws.on('message', (message) => {
         const data = JSON.parse(message);
         if (data.type === 'join') {
-            // Znajdź grę oczekującą
-            let existingGame = null;
+            currentNick = data.nick || 'Anonim';
+            // Znajdź grę oczekującą (z tylko jednym graczem)
+            let existingGameId = null;
             for (let [id, game] of games.entries()) {
-                if (game.players.length === 1) { existingGame = id; break; }
+                if (game.players.length === 1) { existingGameId = id; break; }
             }
-            if (existingGame) {
-                const game = games.get(existingGame);
-                game.players.push(ws);
+            if (existingGameId) {
+                const game = games.get(existingGameId);
+                game.players.push({ ws, nick: currentNick });
                 game.playerIds.push(socketId);
                 const playerIndex = game.players.length - 1;
-                sockets.set(socketId, { gameId: existingGame, playerIndex });
+                // Rozpocznij grę – wyślij info do obu graczy
                 const state = game.engine.getState();
                 game.players.forEach((player, idx) => {
-                    player.send(JSON.stringify({
+                    player.ws.send(JSON.stringify({
                         type: 'game_start',
                         playerId: idx,
-                        gameId: existingGame,
-                        state: state
+                        gameId: existingGameId,
+                        state: state,
+                        myNick: player.nick,
+                        opponentNick: idx === 0 ? game.players[1]?.nick : game.players[0]?.nick
                     }));
                 });
             } else {
+                // Utwórz nową grę
                 const gameId = 'game_' + Date.now();
                 const engine = new GameEngine();
-                games.set(gameId, { engine, players: [ws], playerIds: [socketId] });
-                sockets.set(socketId, { gameId, playerIndex: 0 });
-                ws.send(JSON.stringify({ type: 'waiting', gameId, playerId: 0 }));
+                games.set(gameId, { engine, players: [{ ws, nick: currentNick }], playerIds: [socketId], saved: false });
+                ws.send(JSON.stringify({ type: 'waiting', gameId, playerId: 0, nick: currentNick }));
             }
         } else if (data.type === 'move') {
-            const info = sockets.get(socketId);
-            if (!info) return;
-            const game = games.get(info.gameId);
-            if (!game) return;
-            const result = game.engine.makeMove(data.pitIndex, info.playerIndex);
+            const gameId = [...games.entries()].find(([_, g]) => g.players.some(p => p.ws === ws))?.[0];
+            if (!gameId) return;
+            const game = games.get(gameId);
+            const playerIndex = game.players.findIndex(p => p.ws === ws);
+            if (playerIndex === -1) return;
+            const result = game.engine.makeMove(data.pitIndex, playerIndex);
             if (result.success) {
                 const state = game.engine.getState();
                 const msg = JSON.stringify({
                     type: 'state_update',
-                    gameId: info.gameId,
+                    gameId,
                     state,
                     moveResult: { success: true, extraTurn: result.extraTurn }
                 });
-                game.players.forEach(p => p.send(msg));
-                // Jeśli gra zakończona, zapisz wynik (przez serwer – unikamy duplikatów)
-                if (state.gameOver) {
-                    const winnerName = state.winner === 0 ? 'Gracz dolny' : (state.winner === 1 ? 'Gracz górny' : 'Remis');
+                game.players.forEach(p => p.ws.send(msg));
+                // Jeśli gra zakończona i jeszcze nie zapisana
+                if (state.gameOver && !game.saved) {
+                    game.saved = true;
+                    const player0Nick = game.players[0]?.nick || 'Gracz 1';
+                    const player1Nick = game.players[1]?.nick || 'Gracz 2';
+                    const winnerName = state.winner === 0 ? player0Nick : (state.winner === 1 ? player1Nick : 'Remis');
                     scores.push({
                         winner: winnerName,
+                        player0Nick,
+                        player1Nick,
                         player0Score: state.board[6],
                         player1Score: state.board[13],
                         date: new Date()
                     });
-                    // Ograniczenie do 10 ostatnich wyników
                     if (scores.length > 10) scores.shift();
                 }
             } else {
@@ -200,15 +209,15 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        const info = sockets.get(socketId);
-        if (info) {
-            const game = games.get(info.gameId);
-            if (game) {
-                const other = game.players.find(p => p.socketId !== socketId);
-                if (other) other.send(JSON.stringify({ type: 'opponent_disconnected' }));
-                games.delete(info.gameId);
+        // Znajdź grę, w której był ten gracz i usuń ją
+        for (let [id, game] of games.entries()) {
+            const idx = game.players.findIndex(p => p.ws === ws);
+            if (idx !== -1) {
+                const other = game.players[1 - idx];
+                if (other) other.ws.send(JSON.stringify({ type: 'opponent_disconnected' }));
+                games.delete(id);
+                break;
             }
-            sockets.delete(socketId);
         }
     });
 });
