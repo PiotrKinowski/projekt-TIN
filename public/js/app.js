@@ -2,10 +2,25 @@ let wsManager, uiRenderer;
 let myPlayerId = null, gameActive = false, currentGameId = null, myNick = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('rules-modal');
+    const rulesBtn = document.getElementById('rules-btn');
+    const closeBtn = document.querySelector('.close-btn');
     const joinBtn = document.getElementById('join-btn');
     const nickInput = document.getElementById('nick-input');
     const gameArea = document.getElementById('game-area');
     const statusDiv = document.getElementById('game-status');
+
+    rulesBtn.addEventListener('click', () => {
+        modal.style.display = 'flex';   // lub 'block', ale flex ładniej centruje
+    });
+    closeBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+    window.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
 
     joinBtn.addEventListener('click', () => {
         const nick = nickInput.value.trim();
