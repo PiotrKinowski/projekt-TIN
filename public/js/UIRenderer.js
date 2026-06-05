@@ -8,7 +8,8 @@ class UIRenderer {
     setPlayerId(id) { this.myPlayerId = id; }
     render(board, currentPlayer, gameOver, winner) {
         this.container.innerHTML = '';
-        // Górny rząd (gracz 1)
+
+        // Górny rząd
         const topRow = document.createElement('div');
         topRow.className = 'row';
         const store1 = this.createStore(board[13], 'store-left');
@@ -16,7 +17,8 @@ class UIRenderer {
         for (let i = 12; i >= 7; i--)
             topRow.appendChild(this.createPit(i, board[i]));
         this.container.appendChild(topRow);
-        // Dolny rząd (gracz 0)
+
+        // Dolny rząd
         const bottomRow = document.createElement('div');
         bottomRow.className = 'row';
         for (let i = 0; i <= 5; i++)

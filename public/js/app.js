@@ -57,7 +57,6 @@ function handleMessage(data) {
             if (!currentGameId) currentGameId = data.gameId;
             uiRenderer.render(data.state.board, data.state.currentPlayer, data.state.gameOver, data.state.winner);
             gameActive = !data.state.gameOver;
-            // NIE zapisujemy wyniku z poziomu klienta – robi to serwer
             break;
         case 'error':
             uiRenderer.showError(data.message);
@@ -75,7 +74,6 @@ async function refreshScores() {
     list.innerHTML = '';
     scores.slice().reverse().forEach(s => {
         const li = document.createElement('li');
-        // Wyświetlamy tylko datę (bez godziny) i nicki oraz wynik
         const dateStr = new Date(s.date).toLocaleDateString();
         li.textContent = `${dateStr} - Zwycięzca: ${s.winner} (${s.player0Nick}:${s.player1Nick} ${s.player0Score}:${s.player1Score})`;
         list.appendChild(li);

@@ -1,7 +1,7 @@
 {
-  "name": "mancala-online",
+  "name": "mankala-online",
   "version": "1.0.0",
-  "description": "Mancala game with WebSocket and AJAX",
+  "description": "Mankala online",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

@@ -3,7 +3,6 @@ const WebSocket = require('ws');
 const path = require('path');
 const http = require('http');
 
-// ---------- CZYSTE FUNKCJE (programowanie funkcyjne) ----------
 function distributeStones(board, startIdx, playerSide) {
     let newBoard = [...board];
     let stones = newBoard[startIdx];
@@ -64,7 +63,9 @@ function finalizeGame(board) {
     return newBoard;
 }
 
-// ---------- KLASA SILNIKA GRY ----------
+
+
+
 class GameEngine {
     constructor() {
         this.board = [4,4,4,4,4,4,0,4,4,4,4,4,4,0];
@@ -109,7 +110,9 @@ class GameEngine {
     }
 }
 
-// ---------- SERWER HTTP + WEBSOCKET ----------
+
+
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
@@ -117,7 +120,7 @@ const wss = new WebSocket.Server({ server });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Tablica wyników (w pamięci)
+// Tablica wyników
 let scores = [];
 app.post('/api/scores', (req, res) => {
     const { winner, player0Nick, player1Nick, player0Score, player1Score } = req.body;
@@ -141,7 +144,8 @@ wss.on('connection', (ws) => {
         const data = JSON.parse(message);
         if (data.type === 'join') {
             currentNick = data.nick || 'Anonim';
-            // Znajdź grę oczekującą (z tylko jednym graczem)
+
+            // Znajdź grę oczekującą
             let existingGameId = null;
             for (let [id, game] of games.entries()) {
                 if (game.players.length === 1) { existingGameId = id; break; }
@@ -151,7 +155,8 @@ wss.on('connection', (ws) => {
                 game.players.push({ ws, nick: currentNick });
                 game.playerIds.push(socketId);
                 const playerIndex = game.players.length - 1;
-                // Rozpocznij grę – wyślij info do obu graczy
+
+                // Rozpocznij grę
                 const state = game.engine.getState();
                 game.players.forEach((player, idx) => {
                     player.ws.send(JSON.stringify({
@@ -164,7 +169,7 @@ wss.on('connection', (ws) => {
                     }));
                 });
             } else {
-                // Utwórz nową grę
+                // Nowa gra
                 const gameId = 'game_' + Date.now();
                 const engine = new GameEngine();
                 games.set(gameId, { engine, players: [{ ws, nick: currentNick }], playerIds: [socketId], saved: false });
@@ -186,7 +191,7 @@ wss.on('connection', (ws) => {
                     moveResult: { success: true, extraTurn: result.extraTurn }
                 });
                 game.players.forEach(p => p.ws.send(msg));
-                // Jeśli gra zakończona i jeszcze nie zapisana
+                // Zapis wyniku
                 if (state.gameOver && !game.saved) {
                     game.saved = true;
                     const player0Nick = game.players[0]?.nick || 'Gracz 1';
@@ -209,7 +214,6 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        // Znajdź grę, w której był ten gracz i usuń ją
         for (let [id, game] of games.entries()) {
             const idx = game.players.findIndex(p => p.ws === ws);
             if (idx !== -1) {
